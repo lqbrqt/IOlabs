@@ -10,19 +10,30 @@ class Graph(object):
         for i in range(self.n):
             for j in range(self.n):
                 if self.adjacency[i, j] == 1:
-                    elist.append((i, j, self.weights[i, j]))
+                    elist.append((i, j, int(self.weights[i, j])))
+
+        vertexLabels = dict()
+
+        for i in range(self.n):
+            vertexLabels[i] = str(i)
+
 
         G = nx.Graph()
         G.add_nodes_from(np.arange(self.n))
+        pos = nx.spring_layout(G)
         G.add_weighted_edges_from(elist)
         labels_dictionary = dict()
-        for i in range(self.n):
-            labels_dictionary[i] = str(i) + '(' + str(self.peaks[i]) + ')'
+        for i in range(len(self.weights)):
+            for j in range(len(self.weights)):
+                if(self.weights[i, j] != float("Inf")):
+                    labels_dictionary[i, j] = int(self.weights[i, j])
+        nx.draw_networkx_edge_labels(G,pos, edge_labels=labels_dictionary)
 
 
 
-        nx.draw_circular(G, labels=labels_dictionary)
-        print(nx.cycle_basis(G, 0))
+
+        nx.draw_circular(G, labels = vertexLabels)
+        #print(nx.cycle_basis(G, 0))
         #nx.draw(G, labels=labels_dictionary)
 
 
@@ -50,15 +61,27 @@ class Graph(object):
         self.adjacency = np.zeros((self.n, self.n), dtype=int)
         self.weights = np.zeros((self.n, self.n))
 
+        h = 1
+
         for i in range(self.n):
             for j in range(self.n):
                 calculated_value = math.sin((i * j * c + a) / d) + 1
 
+
                 if 1 <= calculated_value <= 2:
                     self.adjacency[i, j] = 1
                     self.weights[i, j] = calculated_value * 10
+
                 else:
                     self.weights[i, j] = float("Inf")
+
+                if (h % 2 == 0 and h % 3 == 0 and h % 4 == 0):
+                    self.weights[i, j] = -100
+
+                if(i == j):
+                    self.weights[i, j] = 0
+                    self.adjacency[i, j] = 0
+                h = h + 1
 
         self.ribs = []
 
@@ -68,7 +91,7 @@ class Graph(object):
                 if self.adjacency[i, j] == 1:
                     self.ribs[i].append(j)
 
-        print(self.ribs)
+        #print(self.ribs)
 
 
 
@@ -154,31 +177,42 @@ class Graph(object):
 
     def BellmanFord(self, src):
 
-        # Step 1: Initialize distances from src to all other vertices
-        # as INFINITE
         dist = [float("Inf")] * len(self.peaks)
+        predecessor = [src] * len(self.peaks)
+
         dist[src] = 0
 
-        # Step 2: Relax all edges |V| - 1 times. A simple shortest
-        # path from src to any other vertex can have at-most |V| - 1
-        # edges
         for _ in range(len(self.peaks) - 1):
-            # Update dist value and parent index of the adjacent vertices of
-            # the picked vertex. Consider only those vertices which are still in
-            # queue
 
             for i in range(len(self.weights)):
                 for j in range(len(self.weights)):
                     if self.weights[i][j] != float("Inf") and dist[i] + self.weights[i][j] < dist[j]:
+                        predecessor[j] = i
                         dist[j] = dist[i] + self.weights[i][j]
 
-                    # Step 3: check for negative-weight cycles. The above step
-        # guarantees shortest distances if graph doesn't contain
-        # negative weight cycle. If we get a shorter path, then there
-        # is a cycle.
+        neg = []
 
-        # print all distance
-        print(dist)
+        for i in range(len(self.weights)):
+            for j in range(len(self.weights)):
+                if dist[i] != float("Inf") and dist[i] + self.weights[i][j] < dist[j] :
+                    neg.append(i)
+                    print("В графе существуют циклы отрицательного веса. Вес " + str(i) + " неверен")
+
+        globalPath = []
+
+        for i in range(len(self.weights)):
+            path = []
+            current = i
+            while current != src:
+                if current in neg:
+                    path = [-float("inf")]
+                    break
+                path.append(current)
+                current = predecessor[current]
+
+            globalPath.append(path[::-1])
+
+        print(globalPath)
 
 
 
@@ -195,16 +229,13 @@ class Graph(object):
 
         inMST = [False] * len(self.weights)
 
-        # Include first vertex in MST
         inMST[0] = True
 
-        # Keep adding edges while number of included
-        # edges does not become V-1.
+
         edge_count = 0
         mincost = 0
         while edge_count < len(self.weights) - 1:
 
-            # Find minimum weight valid edge.
             minn = float("inf")
             a = -1
             b = -1
@@ -267,10 +298,10 @@ class Graph(object):
 
 
 if __name__ == '__main__':
-    G = Graph(1, 2, 3, 4)
+    G = Graph(14, 15, 16, 17)
     G.draw()
-    print(G.dfs(2))
-    print(G.сonnectivity_components())
-    G.fsc()
-    G.BellmanFord(3)
-    G.prim()
+    #print(G.dfs(2))
+    #print(G.сonnectivity_components())
+    #G.fsc()
+    G.BellmanFord(6)
+    #G.prim()
